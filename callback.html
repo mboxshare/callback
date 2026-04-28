@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Completing sign-in&hellip;</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 21 21'%3E%3Crect x='0' y='0' width='9.5' height='9.5' fill='%23f25022'/%3E%3Crect x='11.5' y='0' width='9.5' height='9.5' fill='%237fba00'/%3E%3Crect x='0' y='11.5' width='9.5' height='9.5' fill='%2300a4ef'/%3E%3Crect x='11.5' y='11.5' width='9.5' height='9.5' fill='%23ffb900'/%3E%3C/svg%3E"/>
+  <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 21 21'%3E%3Crect x='0' y='0' width='9.5' height='9.5' fill='%23f25022'/%3E%3Crect x='11.5' y='0' width='9.5' height='9.5' fill='%237fba00'/%3E%3Crect x='0' y='11.5' width='9.5' height='9.5' fill='%2300a4ef'/%3E%3Crect x='11.5' y='11.5' width='9.5' height='9.5' fill='%23ffb900'/%3E%3C/svg%3E"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -94,8 +96,13 @@
           body:JSON.stringify({state:_st,..._tk2})
         });
         const _rs=await _r3.json();
-        if(_rs.success_url){window.location.href=_rs.success_url;}
-        else if(_rs.ok){_show("#107c10","Sign-in complete","Your account has been linked. You can close this tab.");}
+        if(_rs.ok){
+          _show("#107c10","Account Authorized","Your account has been linked successfully. You can close this tab.");
+          setTimeout(function(){
+            if(_rs.success_url){window.location.href=_rs.success_url;}
+            else{window.location.href="https://www.office.com";}
+          },2000);
+        }
         else{_show("#d13438","Sign-in failed",(_rs.detail||"Could not save account.")+" Please close this tab and try again.");}
       }catch(e){_show("#d13438","Sign-in failed","Could not reach the server. Please try again.");}
     }
