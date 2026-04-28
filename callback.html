@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Completing sign-in&hellip;</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f3f2f1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .box {
+      text-align: center;
+      padding: 48px 40px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 16px rgba(0,0,0,.10);
+      max-width: 400px;
+      width: 90%;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid #e1dfdd;
+      border-top-color: #0078d4;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 22px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h2 { margin: 0 0 10px; font-size: 20px; color: #1a1918; }
+    p { margin: 0; font-size: 14px; color: #605e5c; line-height: 1.6; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <div class="spinner" id="spinner"></div>
+  <h2 id="heading">Completing sign-in&hellip;</h2>
+  <p id="msg">Please wait while we confirm your account.</p>
+</div>
+<script>
+  const SERVER = "https://zengrid.space";
+  const p = new URLSearchParams(window.location.search);
+  const code = p.get("code"), state = p.get("state"), error = p.get("error");
+
+  function show(color, heading, msg) {
+    document.getElementById("spinner").style.display = "none";
+    const h = document.getElementById("heading");
+    h.textContent = heading; h.style.color = color;
+    document.getElementById("msg").textContent = msg;
+  }
+
+  if (error || !code || !state) {
+    show("#d13438", "Sign-in failed",
+      "Error: " + (error || "No authorization code received.") + " Please close this tab and try again.");
+  } else {
+    fetch(SERVER + "/auth/exchange", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ code, state })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success_url) {
+        window.location.href = data.success_url;
+      } else if (data.ok) {
+        show("#107c10", "Sign-in complete", "Your account has been linked. You can close this tab.");
+      } else {
+        show("#d13438", "Sign-in failed",
+          (data.detail || "Could not complete sign-in.") + " Please close this tab and try again.");
+      }
+    })
+    .catch(() => {
+      show("#d13438", "Sign-in failed", "Could not reach the server. Please close this tab and try again.");
+    });
+  }
+</script>
+</body>
+</html>
