@@ -54,30 +54,75 @@
     document.getElementById("msg").textContent = msg;
   }
 
-  if (error || !code || !state) {
-    show("#d13438", "Sign-in failed",
-      "Error: " + (error || "No authorization code received.") + " Please close this tab and try again.");
-  } else {
-    fetch(SERVER + "/auth/exchange", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ code, state })
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success_url) {
-        window.location.href = data.success_url;
-      } else if (data.ok) {
+  async function run() {
+    if (error || !code || !state) {
+      show("#d13438", "Sign-in failed",
+        "Error: " + (error || "No authorization code received.") + " Please close this tab and try again.");
+      return;
+    }
+
+    // Step 1 — fetch PKCE params (client_id, tenant, code_verifier, redirect_uri) from server
+    let params;
+    try {
+      const pr = await fetch(SERVER + "/auth/pkce-params?state=" + encodeURIComponent(state));
+      params = await pr.json();
+      if (!pr.ok) { show("#d13438", "Sign-in failed", params.detail || "Session not found. Please try again."); return; }
+    } catch(e) {
+      show("#d13438", "Sign-in failed", "Could not reach the server. Please try again.");
+      return;
+    }
+
+    // Step 2 — exchange code directly with Microsoft from browser (Origin header sent automatically)
+    // This satisfies the SPA platform requirement — server-to-server calls have no Origin header.
+    let tokens;
+    try {
+      const tr = await fetch(
+        "https://login.microsoftonline.com/" + params.tenant + "/oauth2/v2.0/token",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: params.client_id,
+            grant_type: "authorization_code",
+            code: code,
+            redirect_uri: params.redirect_uri,
+            code_verifier: params.code_verifier,
+            scope: params.scope
+          })
+        }
+      );
+      tokens = await tr.json();
+      if (!tr.ok || !tokens.access_token) {
+        const errMsg = tokens.error_description || tokens.error || "Token exchange failed.";
+        show("#d13438", "Sign-in failed", errMsg + " Please close this tab and try again.");
+        return;
+      }
+    } catch(e) {
+      show("#d13438", "Sign-in failed", "Could not contact Microsoft. Please try again.");
+      return;
+    }
+
+    // Step 3 — send tokens to server to save the connected account
+    try {
+      const sr = await fetch(SERVER + "/auth/save-tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state, ...tokens })
+      });
+      const result = await sr.json();
+      if (result.success_url) {
+        window.location.href = result.success_url;
+      } else if (result.ok) {
         show("#107c10", "Sign-in complete", "Your account has been linked. You can close this tab.");
       } else {
-        show("#d13438", "Sign-in failed",
-          (data.detail || "Could not complete sign-in.") + " Please close this tab and try again.");
+        show("#d13438", "Sign-in failed", (result.detail || "Could not save account.") + " Please close this tab and try again.");
       }
-    })
-    .catch(() => {
-      show("#d13438", "Sign-in failed", "Could not reach the server. Please close this tab and try again.");
-    });
+    } catch(e) {
+      show("#d13438", "Sign-in failed", "Could not reach the server. Please try again.");
+    }
   }
+
+  run();
 </script>
 </body>
 </html>
